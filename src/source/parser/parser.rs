@@ -1,36 +1,36 @@
 use super::commands::{ElementLine, ParseTypes, ParsedHead};
 
-pub fn check_error(line: &String) -> bool {
+pub fn check_error(line: &String) -> i32 {
     if line.len() >= 2 {
         if line[0..2].contains("||") || line[0..2].contains("&&") {
             println!("minishell: parse error near `{}'", &line[0..2]);
-            return true;
+            return 2;
         }
     } else if line.len() > 1 && line[0..1].contains("|") {
         println!("minishell: parse error near `|'");
-        return true;
+        return 2;
     }
-    return false;
+    return 0;
 }
 
 fn parse_pipe(
     tokens: &mut ParsedHead,
     i: &mut usize,
     last_add: &ElementLine,
-) -> (ElementLine, bool) {
+) -> (ElementLine, i32) {
     let mut element = ElementLine::new();
     if last_add.get_type() != &ParseTypes::Word {
         println!(
             "minishell: syntax error near unexpected token `{}'",
             last_add.get_value()
         );
-        return (element, true);
+        return (element, 2);
     }
     element.select_type(&String::from("|"));
     element.add_value(String::from("|"));
     tokens.add_token(element);
     *i += 1;
-    return (tokens.tokens.back().unwrap().clone(), false);
+    return (tokens.tokens.back().unwrap().to_owned(), 0);
 }
 
 fn parse_redirection(
@@ -38,7 +38,7 @@ fn parse_redirection(
     line: &String,
     i: &mut usize,
     last_add: &ElementLine,
-) -> (ElementLine, bool) {
+) -> (ElementLine, i32) {
     let mut element = ElementLine::new();
     let mut word = String::new();
     if last_add.get_type() != &ParseTypes::Word {
@@ -46,7 +46,7 @@ fn parse_redirection(
             "minishell: syntax error near unexpected token `{}'",
             last_add.get_value()
         );
-        return (element, true);
+        return (element, 2);
     }
     if *i + 1 < line.len() && line[*i..*i + 1] == line[*i + 1..*i + 2] {
         word.push_str(line[*i..*i + 2].as_ref());
@@ -58,7 +58,7 @@ fn parse_redirection(
     element.select_type(&word);
     element.add_value(word);
     tokens.add_token(element);
-    return (tokens.tokens.back().unwrap().clone(), false);
+    return (tokens.tokens.back().unwrap().to_owned(), 0);
 }
 
 fn validade_quote(line: &String, i: &usize) -> (usize, bool) {
@@ -80,7 +80,7 @@ fn parse_word(
     line: &String,
     i: &mut usize,
     last_type: &ElementLine,
-) -> (ElementLine, bool) {
+) -> (ElementLine, i32) {
     let mut element = ElementLine::new();
     let mut word = String::new();
     while *i < line.len() {
@@ -113,19 +113,20 @@ fn parse_word(
         || *last_type.get_type() == ParseTypes::Redirection
     {
         tokens.add_token(element);
-        return (tokens.tokens.back().unwrap().clone(), false);
+        return (tokens.tokens.back().unwrap().to_owned(), 0);
     } else {
         println!("minishell: syntax error near unexpected token `newline'");
-        return (element, true);
+        return (element, 2);
     }
 }
 
-pub fn parser(line: &String) -> (ParsedHead, bool) {
+pub fn parser(line: &String) -> (ParsedHead, i32) {
     let mut tokens = ParsedHead::new();
     let trined = String::from(line.trim());
     let mut i = 0;
     let mut last_type = ElementLine::new();
-    let mut error = check_error(&trined);
+    let mut error: i32 = check_error(&trined);
+
     while i < trined.len() {
         match trined.chars().nth(i).unwrap() {
             '|' => (last_type, error) = parse_pipe(&mut tokens, &mut i, &last_type),
@@ -138,7 +139,7 @@ pub fn parser(line: &String) -> (ParsedHead, bool) {
             ' ' => {}
             _ => (last_type, error) = parse_word(&mut tokens, &trined, &mut i, &mut last_type),
         }
-        if error == true {
+        if error != 0 {
             return (tokens, error);
         }
         i += 1;

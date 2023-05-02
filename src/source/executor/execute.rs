@@ -66,7 +66,7 @@ fn execute_pipes(tokens: &ParsedHead) -> (Stdio, Stdio, bool) {
     return (pipe.pipe_in, pipe.pipe_out, true);
 }
 
-pub fn execute(tokens: ParsedHead) {
+pub fn execute(tokens: &ParsedHead) {
     let (mut pipe_in, pipe_out, error) = execute_pipes(&tokens);
     if error == false {
         return;

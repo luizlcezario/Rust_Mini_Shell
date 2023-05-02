@@ -2,6 +2,34 @@ use std::{fs::File, io::{Read, self, Write}, env};
 use super::parser::commands::ParsedHead;
 use super::parser::parser;
 use super::executor::execute;
+
+pub struct Shell {
+    pub line: String,
+    pub env: super::env::new_env::Env,
+    pub tokens: ParsedHead,
+    pub error: i32,
+    pub last_error: i32,
+}
+
+impl Shell {
+    pub fn new() -> Self {
+        Shell {
+            line: String::new(),
+            env: super::env::new_env::Env::new(),
+            tokens: ParsedHead::new(),
+            error: 0,
+            last_error: 0,
+        }
+    }
+    pub fn reset(&mut self) {
+        self.line.clear();
+        self.last_error = self.error;
+        self.tokens = ParsedHead::new();
+        self.error = 0;
+    }
+}
+
+
 fn display_prompt() {
     let mut contents = String::new();
     match File::open("/etc/hostname") {
@@ -17,21 +45,20 @@ fn display_prompt() {
 }
 
 pub fn minishell() {
-    let mut a = String::new();
-    let mut tokens: ParsedHead;
-    let mut error: bool = false;
+    let mut shell: Shell = Shell::new();
+
     loop {
         display_prompt();
-        match io::stdin().read_line(&mut a) {
+        match io::stdin().read_line(&mut shell.line) {
             Ok(_) => (),
             Err(e) => panic!("Error: {}", e),
         };
-        (tokens, error) = parser::parser(&a);
-        if error == true {
-            a.clear();
+        (shell.tokens, shell.error) = parser::parser(&shell.line);
+        if shell.error != 0 {
+            shell.reset();
             continue;
         }
-        execute::execute(tokens);
-        a.clear();
+        execute::execute(&shell.tokens);
+        shell.reset();
     }
 }
