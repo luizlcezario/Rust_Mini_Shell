@@ -1,6 +1,6 @@
 use super::commands::{ElementLine, ParseTypes, ParsedHead};
 
-fn check_error(line: &String) -> bool {
+pub fn check_error(line: &String) -> bool {
     if line.len() >= 2 {
         if line[0..2].contains("||") || line[0..2].contains("&&") {
             println!("minishell: parse error near `{}'", &line[0..2]);

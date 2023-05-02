@@ -1,15 +1,7 @@
-use std::env;
-use std::fs::File;
-use std::io;
-use std::io::Read;
-use std::io::Write;
-
-use self::commands::ParsedHead;
-mod commands;
-mod execute;
-mod heredoc;
-mod parser;
-
+use std::{fs::File, io::{Read, self, Write}, env};
+use super::parser::commands::ParsedHead;
+use super::parser::parser;
+use super::executor::execute;
 fn display_prompt() {
     let mut contents = String::new();
     match File::open("/etc/hostname") {

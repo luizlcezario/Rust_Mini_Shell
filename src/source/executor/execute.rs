@@ -1,7 +1,8 @@
-use super::commands::{ParseTypes, ParsedHead};
-use super::heredoc::heredoc;
 use std::io::Error;
 use std::{fs::File, process::Stdio};
+
+use crate::source::parser::commands::{ParsedHead, ParseTypes};
+use crate::source::redirections::heredoc::heredoc;
 
 struct Pipe {
     pipe_in: Stdio,
@@ -66,7 +67,7 @@ fn execute_pipes(tokens: &ParsedHead) -> (Stdio, Stdio, bool) {
 }
 
 pub fn execute(tokens: ParsedHead) {
-    let (mut pipe_in, pipe_out, error) = execute_pipes(tokens.get);
+    let (mut pipe_in, pipe_out, error) = execute_pipes(&tokens);
     if error == false {
         return;
     }
@@ -80,8 +81,7 @@ pub fn execute(tokens: ParsedHead) {
             }
         }
     }
-    let sed = tokens
-        .cmds
+    let sed = tokens.tokens
         .back()
         .expect("errror")
         .execute(pipe_in, pipe_out);

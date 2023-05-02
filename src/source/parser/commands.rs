@@ -12,8 +12,8 @@ pub enum ParseTypes {
 }
 #[derive(Clone)]
 pub struct ElementLine {
-    parse_type: ParseTypes,
-    value: String,
+    pub parse_type: ParseTypes,
+    pub value: String,
 }
 
 impl PartialEq for ElementLine {
@@ -69,7 +69,7 @@ impl ElementLine {
 }
 
 pub struct ParsedHead {
-    n_cmds: i32,
+    pub n_cmds: i32,
     pub tokens: LinkedList<ElementLine>,
 }
 
