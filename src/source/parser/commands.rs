@@ -3,6 +3,8 @@ use std::{
     process::{Child, Command, Stdio},
 };
 
+use crate::source::builtins::{cd , env, export, pwd, unset, exit};
+
 #[derive(PartialEq, Clone)]
 pub enum ParseTypes {
     Word,
@@ -47,17 +49,37 @@ impl ElementLine {
     pub fn get_type(&self) -> &ParseTypes {
         &self.parse_type
     }
+    pub fn is_builtin(&self, cmd: &str, splitted: &Vec<&str>) -> u32 {
+        if cmd == "cd" {
+            cd(splitted);
+            return 1;
+        } else if cmd == "env" {
+            env(splitted);
+            return 1;
+        } else if cmd == "export" {
+            return 1;
+        } else if cmd == "pwd" {
+            return 1;
+        } else if cmd == "unset" {
+            return 1;
+        } else if cmd == "exit" {
+            return 1;
+        } else {
+            return 0;
+        }
+    }
     pub fn execute(&self, pipe_in: Stdio, pipe_out: Stdio) -> Child {
         let splitted = self.value.split(" ").collect::<Vec<&str>>();
         let sed_child;
-        if splitted[1..].concat() != "" {
+        let test = self.is_builtin(&splitted[0], &splitted);
+        if splitted[1..].concat() != "" && test == 0 {
             sed_child = Command::new(splitted[0])
                 .arg(splitted[1..].concat())
                 .stdin(pipe_in)
                 .stdout(pipe_out)
                 .spawn()
                 .expect("error on spawn");
-        } else {
+        } else if test == 0 {
             sed_child = Command::new(splitted[0])
                 .stdin(pipe_in)
                 .stdout(pipe_out)
