@@ -1,6 +1,7 @@
 use std::io::Error;
 use std::{fs::File, process::Stdio};
 
+use crate::source::minishell::Shell;
 use crate::source::parser::commands::{ParsedHead, ParseTypes};
 use crate::source::redirections::heredoc::heredoc;
 
@@ -66,24 +67,23 @@ fn execute_pipes(tokens: &ParsedHead) -> (Stdio, Stdio, bool) {
     return (pipe.pipe_in, pipe.pipe_out, true);
 }
 
-pub fn execute(tokens: &ParsedHead) {
-    let (mut pipe_in, pipe_out, error) = execute_pipes(&tokens);
+pub fn execute(mut shell: Shell) -> Shell {
+    let (mut pipe_in, pipe_out, error) = execute_pipes(&shell.tokens);
+    let token = shell.tokens.clone();
     if error == false {
-        return;
+        return shell;
     }
-    for (u, cmd) in tokens.tokens.iter().enumerate() {
+    for (u, cmd) in token.tokens.iter().enumerate() {
         if cmd.get_type() == &ParseTypes::Word {
-            if u == tokens.tokens.len() - 1 {
+            if u == token.tokens.len() - 1 {
                 break;
-            } else {
-                let sed = cmd.execute(pipe_in, Stdio::piped());
-                pipe_in = sed.stdout.expect("error on stdout").into();
             }
+            pipe_in = cmd.execute(& mut shell, pipe_in, Stdio::piped(),false);
         }
     }
-    let sed = tokens.tokens
+   token.tokens
         .back()
         .expect("errror")
-        .execute(pipe_in, pipe_out);
-    (sed.wait_with_output().expect("error on wait"));
+        .execute(& mut shell, pipe_in, pipe_out, true);
+    return shell;
 }

@@ -1,8 +1,8 @@
-use std::{fs::File, io::{Read, self, Write}, env};
+use std::{fs::File, io::{Read, self, Write},  path::Path};
 use super::parser::commands::ParsedHead;
 use super::parser::parser;
 use super::executor::execute;
-
+use colored::Colorize;
 pub struct Shell {
     pub line: String,
     pub env: super::env::new_env::Env,
@@ -21,7 +21,7 @@ impl Shell {
             last_error: 0,
         }
     }
-    pub fn reset(&mut self) {
+    pub fn reset(&mut self){
         self.line.clear();
         self.last_error = self.error;
         self.tokens = ParsedHead::new();
@@ -30,17 +30,29 @@ impl Shell {
 }
 
 
-fn display_prompt() {
-    let mut contents = String::new();
-    match File::open("/etc/hostname") {
-        Ok(mut file) => file.read_to_string(&mut contents).unwrap(),
-        Err(e) => panic!("Error: hostname file not found : {}", e),
+fn display_prompt(shell: &Shell) {
+    let user = shell.env.get_env("USER");
+    match user {
+        Some(u) => print!("{}:", u.green()),
+        None =>{
+            let mut contents = String::new();
+            match File::open("/etc/hostname") {
+                Ok(mut file) => file.read_to_string(&mut contents).unwrap(),
+                Err(e) => panic!("Error: hostname file not found : {}", e),
+            };
+            print!("{}:", contents.trim_matches('\n').green());
+        }
     };
-    print!(
-        "{}:{}$ ",
-        contents.trim_end(),
-        env::current_dir().unwrap().display()
-    );
+    let user = shell.env.get_env("PWD");
+    match user {
+        Some(u) => print!("{}$ ", Path::new(u)
+        .file_name()
+        .expect("Failed to get last directory")
+        .to_str()
+        .expect("Failed to convert last directory to string").blue()),
+        None => (),
+    };
+    
     io::stdout().flush().unwrap();
 }
 
@@ -48,7 +60,7 @@ pub fn minishell() {
     let mut shell: Shell = Shell::new();
 
     loop {
-        display_prompt();
+        display_prompt(&shell);
         match io::stdin().read_line(&mut shell.line) {
             Ok(_) => (),
             Err(e) => panic!("Error: {}", e),
@@ -58,7 +70,7 @@ pub fn minishell() {
             shell.reset();
             continue;
         }
-        execute::execute(&shell.tokens);
+        shell = execute::execute(shell);
         shell.reset();
     }
 }

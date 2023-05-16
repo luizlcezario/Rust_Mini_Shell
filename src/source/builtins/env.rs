@@ -1,3 +1,3 @@
-pub fn env() {
+pub fn built_env() {
 	println!("env");
 }

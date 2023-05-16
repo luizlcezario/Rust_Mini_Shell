@@ -15,11 +15,11 @@ impl Env {
 			env: tmp_env,
 		}
 	}
-	pub fn get_env(&self, key: String) -> Option<&String> {
-		self.env.get(&key)
+	pub fn get_env(&self, key: &str) -> Option<&String> {
+		self.env.get(key)
 	}
-	pub fn set_env(&mut self, key: String, value: String) {
-		self.env.insert(key, value);
+	pub fn set_env(&mut self, key: &str, value: String) {
+		self.env.insert(key.to_string(), value);
 	}
 	pub fn remove_env(&mut self, key: String) {
 		self.env.remove(&key);
@@ -28,5 +28,8 @@ impl Env {
 		for (key, value) in self.env.iter() {
 			println!("{}={}", key, value);
 		}
+	}
+	pub fn get_all(&self) -> HashMap<String, String>{
+		return self.env.clone();
 	}
 }

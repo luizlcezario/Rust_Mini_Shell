@@ -1,3 +1,3 @@
-pub fn unset() {
+pub fn built_unset() {
 	println!("unset");
 }

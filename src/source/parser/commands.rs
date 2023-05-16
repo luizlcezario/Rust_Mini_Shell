@@ -1,9 +1,10 @@
 use std::{
     collections::LinkedList,
-    process::{Child, Command, Stdio},
+    process::{Command, Stdio},
 };
 
-use crate::source::builtins::{cd , env, export, pwd, unset, exit};
+use crate::source::{builtins::{cd::built_cd, env::built_env}, minishell::Shell};
+
 
 #[derive(PartialEq, Clone)]
 pub enum ParseTypes {
@@ -49,12 +50,12 @@ impl ElementLine {
     pub fn get_type(&self) -> &ParseTypes {
         &self.parse_type
     }
-    pub fn is_builtin(&self, cmd: &str, splitted: &Vec<&str>) -> u32 {
+    pub fn is_builtin(&self, shell: & mut Shell, cmd: &str, splitted: & mut Vec<&str>) -> u32 {
         if cmd == "cd" {
-            cd(splitted);
+            built_cd(shell, splitted);
             return 1;
         } else if cmd == "env" {
-            env(splitted);
+            built_env();
             return 1;
         } else if cmd == "export" {
             return 1;
@@ -68,28 +69,42 @@ impl ElementLine {
             return 0;
         }
     }
-    pub fn execute(&self, pipe_in: Stdio, pipe_out: Stdio) -> Child {
-        let splitted = self.value.split(" ").collect::<Vec<&str>>();
+    pub fn execute(&self, shell: & mut Shell,  pipe_in: Stdio, pipe_out: Stdio, last:bool, ) -> Stdio {
+        let mut splitted = self.value.split(" ").collect::<Vec<&str>>();
         let sed_child;
-        let test = self.is_builtin(&splitted[0], &splitted);
-        if splitted[1..].concat() != "" && test == 0 {
+        if self.is_builtin(shell, &splitted[0], & mut splitted) == 1 {
+            if last {
+                return Stdio::null();
+            }
+            return pipe_out;
+        }
+        if splitted[1..].concat() != "" {
             sed_child = Command::new(splitted[0])
                 .arg(splitted[1..].concat())
+                .env_clear()
+                .envs(shell.env.get_all())
                 .stdin(pipe_in)
                 .stdout(pipe_out)
                 .spawn()
                 .expect("error on spawn");
-        } else if test == 0 {
+        } else {
             sed_child = Command::new(splitted[0])
                 .stdin(pipe_in)
+                .env_clear()
+                .envs(shell.env.get_all())
                 .stdout(pipe_out)
                 .spawn()
                 .expect("error on spawn");
+        } 
+        if last {
+            (sed_child.wait_with_output().expect("error on wait"));
+            return Stdio::null();
         }
-        return sed_child;
+        return sed_child.stdout.expect("error on stdout").into();
     }
 }
 
+#[derive(Clone)]
 pub struct ParsedHead {
     pub n_cmds: i32,
     pub tokens: LinkedList<ElementLine>,
