@@ -36,7 +36,7 @@ impl Pipe {
                 true
             }
             Err(_) => {
-                println!("minishell: no such file or directory: {}", value);
+                eprintln!("minishell: no such file or directory: {}", value);
                 false
             }
         }

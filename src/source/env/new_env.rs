@@ -18,8 +18,8 @@ impl Env {
 	pub fn get_env(&self, key: &str) -> Option<&String> {
 		self.env.get(key)
 	}
-	pub fn set_env(&mut self, key: &str, value: String) {
-		self.env.insert(key.to_string(), value);
+	pub fn set_env(&mut self, key: String, value: String) {
+		self.env.insert(key, value);
 	}
 	pub fn remove_env(&mut self, key: String) {
 		self.env.remove(&key);

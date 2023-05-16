@@ -3,11 +3,11 @@ use super::commands::{ElementLine, ParseTypes, ParsedHead};
 pub fn check_error(line: &String) -> i32 {
     if line.len() >= 2 {
         if line[0..2].contains("||") || line[0..2].contains("&&") {
-            println!("minishell: parse error near `{}'", &line[0..2]);
+            eprintln!("minishell: parse error near `{}'", &line[0..2]);
             return 2;
         }
     } else if line.len() > 1 && line[0..1].contains("|") {
-        println!("minishell: parse error near `|'");
+        eprintln!("minishell: parse error near `|'");
         return 2;
     }
     return 0;
@@ -20,7 +20,7 @@ fn parse_pipe(
 ) -> (ElementLine, i32) {
     let mut element = ElementLine::new();
     if last_add.get_type() != &ParseTypes::Word {
-        println!(
+        eprintln!(
             "minishell: syntax error near unexpected token `{}'",
             last_add.get_value()
         );
@@ -42,7 +42,7 @@ fn parse_redirection(
     let mut element = ElementLine::new();
     let mut word = String::new();
     if last_add.get_type() != &ParseTypes::Word {
-        println!(
+        eprintln!(
             "minishell: syntax error near unexpected token `{}'",
             last_add.get_value()
         );
@@ -69,7 +69,7 @@ fn validade_quote(line: &String, i: &usize) -> (usize, bool) {
     match string {
         Some(x) => return (x, false),
         None => {
-            println!("minishell: syntax error near unexpected token `newline'");
+            eprintln!("minishell: syntax error near unexpected token `newline'");
             return (0, true);
         }
     }
@@ -115,7 +115,7 @@ fn parse_word(
         tokens.add_token(element);
         return (tokens.tokens.back().unwrap().to_owned(), 0);
     } else {
-        println!("minishell: syntax error near unexpected token `newline'");
+       eprintln!("minishell: syntax error near unexpected token `newline'");
         return (element, 2);
     }
 }

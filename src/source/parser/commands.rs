@@ -3,7 +3,7 @@ use std::{
     process::{Command, Stdio},
 };
 
-use crate::source::{builtins::{cd::built_cd, env::built_env}, minishell::Shell};
+use crate::source::{builtins::{cd::built_cd, env::built_env, pwd::built_pwd, exit::built_exit, export::built_export, unset::built_unset}, minishell::Shell};
 
 
 #[derive(PartialEq, Clone)]
@@ -51,26 +51,30 @@ impl ElementLine {
         &self.parse_type
     }
     pub fn is_builtin(&self, shell: & mut Shell, cmd: &str, splitted: & mut Vec<&str>) -> u32 {
-        if cmd == "cd" {
-            built_cd(shell, splitted);
+        if cmd.eq("cd") {
+            shell.error = built_cd(shell, splitted);
             return 1;
-        } else if cmd == "env" {
-            built_env();
+        } else if cmd.eq("env") {
+            shell.error = built_env(shell, splitted);
             return 1;
-        } else if cmd == "export" {
+        } else if cmd.eq("export") {
+            shell.error = built_export(shell, splitted);
             return 1;
-        } else if cmd == "pwd" {
+        } else if cmd.eq("pwd") {
+            shell.error = built_pwd(shell, splitted);
             return 1;
-        } else if cmd == "unset" {
+        } else if cmd.eq("unset") {
+            shell.error = built_unset(shell, splitted);
             return 1;
-        } else if cmd == "exit" {
+        } else if cmd.eq("exit") {
+            shell.error = built_exit(shell, splitted);
             return 1;
         } else {
             return 0;
         }
     }
     pub fn execute(&self, shell: & mut Shell,  pipe_in: Stdio, pipe_out: Stdio, last:bool, ) -> Stdio {
-        let mut splitted = self.value.split(" ").collect::<Vec<&str>>();
+        let mut splitted = self.value.trim().split(" ").collect::<Vec<&str>>();
         let sed_child;
         if self.is_builtin(shell, &splitted[0], & mut splitted) == 1 {
             if last {
