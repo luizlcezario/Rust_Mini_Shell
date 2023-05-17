@@ -87,7 +87,7 @@ fn parse_word(
         if line.chars().nth(*i).unwrap() == '\"' || line.chars().nth(*i).unwrap() == '\'' {
             let (pos, error) = validade_quote(&line, i);
             word.push_str(
-                line.get(*i..=(*i + pos))
+                line.get(*i..=(*i + pos + 1))
                     .expect("minishell: syntax error near unexpected token `newline'"),
             );
             *i += pos + 2;

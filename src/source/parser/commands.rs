@@ -82,15 +82,13 @@ impl ElementLine {
         let mut word = String::new();
         while i < self.value.len() {
             if self.value.chars().nth(i).unwrap() == '\"' || self.value.chars().nth(i).unwrap() == '\'' {
-                let (pos, error) = validade_quote(&self.value, &i);
+                let (pos, _) = validade_quote(&self.value, &i);
                 word.push_str(
-                    self.value.get(i..=(i + pos))
+                    self.value.get((i + 1)..=(i + pos ))
                         .expect("minishell: syntax error near unexpected token `newline'"),
                 );
                 i += pos + 2;
-                if error == true {
-                    break;
-                }
+
             } else if self.value.chars().nth(i).unwrap() == ' ' &&  word != ""{
                 splitted.push(word.clone());
                 word.clear();
@@ -100,6 +98,9 @@ impl ElementLine {
                 word.push(self.value.chars().nth(i).unwrap());
                 i += 1;
             }
+        }
+        if word != "" {
+            splitted.push(word);
         }
         return splitted;
     }

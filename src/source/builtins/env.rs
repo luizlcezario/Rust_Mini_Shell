@@ -7,14 +7,16 @@ pub fn built_env(shell: &Shell, tokens: &mut Vec<String>) -> i32 {
         return 1;
     }
     let mut env = String::new();
-    for (key, value) in shell.env.get_all() {
+    for (u, (key, value)) in shell.env.get_all().iter().enumerate() {
             env += &key;
             env += "=";
             env += &value;
-            env += "\n";
+            if u != shell.env.get_all().len() - 1 {
+                env += "\n";
+            }
     }
-    tokens[0] = "echo".to_string();
-    tokens[1] = "-n".to_string();
-    tokens[2] = env;
+    tokens.clear();
+    tokens.push("echo".to_string());
+    tokens.push(env);
     return 0;
 }
