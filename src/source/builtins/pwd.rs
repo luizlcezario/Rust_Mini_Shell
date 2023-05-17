@@ -1,7 +1,7 @@
 use crate::source::minishell::Shell;
 
 
-pub fn built_pwd(shell: &mut Shell, tokens:  & mut Vec<&str>) -> i32 {
+pub fn built_pwd(shell: &mut Shell, tokens:  & mut Vec<String>) -> i32 {
 	if tokens.len() > 1 {
 		eprintln!("minishell: pwd: too many arguments");
 		return 1;

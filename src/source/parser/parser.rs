@@ -61,7 +61,7 @@ fn parse_redirection(
     return (tokens.tokens.back().unwrap().to_owned(), 0);
 }
 
-fn validade_quote(line: &String, i: &usize) -> (usize, bool) {
+pub fn validade_quote(line: &String, i: &usize) -> (usize, bool) {
     let string = line
         .get((*i + 1)..)
         .unwrap()
@@ -90,7 +90,7 @@ fn parse_word(
                 line.get(*i..=(*i + pos))
                     .expect("minishell: syntax error near unexpected token `newline'"),
             );
-            *i += pos + 1;
+            *i += pos + 2;
             if error == true {
                 break;
             }

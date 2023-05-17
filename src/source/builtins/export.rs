@@ -1,8 +1,7 @@
-use std::ops::Deref;
 
 use crate::source::minishell::Shell;
 
-pub fn built_export(shell: &mut Shell, tokens:  & mut Vec<&str>) -> i32 {
+pub fn built_export(shell: &mut Shell, tokens:  & mut Vec<String>) -> i32 {
 	for (u, token) in tokens.iter().enumerate() {
 		if u == 0 {
 			continue;

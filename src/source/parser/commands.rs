@@ -3,7 +3,9 @@ use std::{
     process::{Command, Stdio},
 };
 
-use crate::source::{builtins::{cd::built_cd, env::built_env, pwd::built_pwd, exit::built_exit, export::built_export, unset::built_unset}, minishell::Shell};
+use crate::source::{builtins::{cd::built_cd, env::built_env, pwd::built_pwd, exit::built_exit, export::built_export, unset::built_unset}, minishell::Shell, env::new_env::Env};
+
+use super::parser::validade_quote;
 
 
 #[derive(PartialEq, Clone)]
@@ -50,13 +52,13 @@ impl ElementLine {
     pub fn get_type(&self) -> &ParseTypes {
         &self.parse_type
     }
-    pub fn is_builtin(&self, shell: & mut Shell, cmd: &str, splitted: & mut Vec<&str>) -> u32 {
+    pub fn is_builtin(&self, shell: & mut Shell, cmd: String, splitted: & mut Vec<String>) -> i32 {
         if cmd.eq("cd") {
             shell.error = built_cd(shell, splitted);
             return 1;
         } else if cmd.eq("env") {
             shell.error = built_env(shell, splitted);
-            return 1;
+            return shell.error;
         } else if cmd.eq("export") {
             shell.error = built_export(shell, splitted);
             return 1;
@@ -73,17 +75,46 @@ impl ElementLine {
             return 0;
         }
     }
-    pub fn execute(&self, shell: & mut Shell,  pipe_in: Stdio, pipe_out: Stdio, last:bool, ) -> Stdio {
-        let mut splitted = self.value.trim().split(" ").collect::<Vec<&str>>();
+
+    pub fn split_string(&self, env: &Env) -> Vec<String> {
+        let mut splitted: Vec<String> = Vec::new();
+        let mut i = 0;
+        let mut word = String::new();
+        while i < self.value.len() {
+            if self.value.chars().nth(i).unwrap() == '\"' || self.value.chars().nth(i).unwrap() == '\'' {
+                let (pos, error) = validade_quote(&self.value, &i);
+                word.push_str(
+                    self.value.get(i..=(i + pos))
+                        .expect("minishell: syntax error near unexpected token `newline'"),
+                );
+                i += pos + 2;
+                if error == true {
+                    break;
+                }
+            } else if self.value.chars().nth(i).unwrap() == ' ' &&  word != ""{
+                splitted.push(word.clone());
+                word.clear();
+                i += 1;
+            }
+            else {
+                word.push(self.value.chars().nth(i).unwrap());
+                i += 1;
+            }
+        }
+        return splitted;
+    }
+
+    pub fn execute(&self, shell: & mut Shell, pipe_in: Stdio, pipe_out: Stdio, last:bool, ) -> Stdio {
+        let mut splitted = self.split_string(&shell.env);
         let sed_child;
-        if self.is_builtin(shell, &splitted[0], & mut splitted) == 1 {
+        if self.is_builtin(shell, splitted[0].clone(), &mut splitted) == 1 {
             if last {
                 return Stdio::null();
             }
             return pipe_out;
         }
         if splitted[1..].concat() != "" {
-            sed_child = Command::new(splitted[0])
+            sed_child = Command::new(splitted[0].as_str())
                 .arg(splitted[1..].concat())
                 .env_clear()
                 .envs(shell.env.get_all())
@@ -92,7 +123,7 @@ impl ElementLine {
                 .spawn()
                 .expect("error on spawn");
         } else {
-            sed_child = Command::new(splitted[0])
+            sed_child = Command::new(splitted[0].as_str())
                 .stdin(pipe_in)
                 .env_clear()
                 .envs(shell.env.get_all())
