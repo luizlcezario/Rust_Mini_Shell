@@ -27,7 +27,7 @@ impl PartialEq for ElementLine {
         self as *const _ == other as *const _
     }
 }
-fn remove_dolar_by_env(mut word: String, shell: &Shell ) -> String {
+pub fn remove_dolar_by_env(mut word: String, shell: &Shell ) -> String {
     while let Some(a) = word.find('$') {
         let mut has_special = false;
         let mut var = String::new();
@@ -138,7 +138,7 @@ impl ElementLine {
         return splitted;
     }
 
-    pub fn execute(&self, shell: & mut Shell, mut  pipe: Pipe, last:bool, ) -> Pipe {
+    pub fn execute(&self, shell: & mut Shell, mut  pipe: Pipe, last:bool) -> Pipe {
         let mut splitted = self.split_string(&shell);
         let sed_child;
         if self.is_builtin(shell, splitted[0].clone(), &mut splitted) == 1 {
@@ -194,8 +194,13 @@ pub struct ParsedHead {
 
 impl ParsedHead {
     pub fn add_token(&mut self, cmd: ElementLine) {
+        if self.tokens.last() != None && cmd.parse_type == ParseTypes::Word && self.tokens.last().unwrap().parse_type != ParseTypes::Redirection {
+            self.n_cmds += 1;
+        }
+        if self.tokens.last() == None && cmd.parse_type == ParseTypes::Word {
+            self.n_cmds += 1;
+        }
         self.tokens.push(cmd);
-        self.n_cmds += 1;
     }
 
     pub fn new() -> ParsedHead {

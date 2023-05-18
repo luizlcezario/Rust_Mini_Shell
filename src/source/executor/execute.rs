@@ -2,7 +2,7 @@ use std::io::Error;
 use std::{fs::File, process::Stdio};
 
 use crate::source::minishell::Shell;
-use crate::source::parser::commands::{ ParseTypes, ElementLine};
+use crate::source::parser::commands::{ ParseTypes, ElementLine, remove_dolar_by_env};
 use crate::source::redirections::heredoc::heredoc;
 
 pub struct Pipe {
@@ -27,17 +27,17 @@ impl Pipe {
     pub fn open_write(&mut self, path: &String) -> bool {
         let file = File::create(path);
         let error = Pipe::verify_open(file, path, &mut self.pipe_out);
-        error
+       error
     }
     fn verify_open(file: Result<File, Error>, value: &String, pipe: &mut Stdio) -> bool {
         match file {
             Ok(f) => {
                 *pipe = Stdio::from(f);
-                true
+                false
             }
             Err(_) => {
                 eprintln!("minishell: no such file or directory: {}", value);
-                false
+                true
             }
         }
     }
@@ -55,18 +55,22 @@ fn execute_pipes(shell: & mut Shell , tokens: &Vec<ElementLine>, now: usize, mut
             return (pipe, error, last);
         }
         else if token_now.get_type() == &ParseTypes::Redirection {
-            if token_now.value == ">" {
-                error = pipe.open_write(tokens[now + 1].get_value());
-            } else if pipe.value == "<" {
-                error = pipe.open_read(tokens[now + 1].get_value());
-            } else if pipe.value == ">>" {
-                error = pipe.open_write(tokens[now + 1].get_value());
-            } else if pipe.value == "<<" {
-                heredoc(tokens[now + 1].get_value());
+            let mut fi = tokens[now + 1].value.trim().trim_matches(' ').trim_matches('\"').to_string();
+            if fi.find('\'') != Some(0) {
+                fi = remove_dolar_by_env(fi, shell);
             }
-            (pipe, error, _) = execute_pipes(shell, tokens,  now + 2, error, pipe);
+            if token_now.value == ">" {
+                error = pipe.open_write(&fi);
+            } else if token_now.value == "<" {
+                error = pipe.open_read(&fi);
+            } else if token_now.value == ">>" {
+                error = pipe.open_write(&fi);
+            } else if token_now.value == "<<" {
+                heredoc(&fi);
+            }
+            (pipe, error, last) = execute_pipes(shell, tokens,  now + 2, error, pipe);
             if error == false {
-                return (pipe, error, now);
+                return (pipe, error, last);
             }
         } else {
             return (pipe, error, now);
