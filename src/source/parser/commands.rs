@@ -3,7 +3,7 @@ use std::{
     process::{Command, Stdio},
 };
 
-use regex::Regex;
+use regex::{Regex, Error};
 
 use crate::source::{builtins::{cd::built_cd, env::built_env, pwd::built_pwd, exit::built_exit, export::built_export, unset::built_unset}, minishell::Shell};
 
@@ -103,7 +103,7 @@ impl ElementLine {
             return 0;
         }
     }
-
+            
     pub fn split_string(&self, shell: &Shell) -> Vec<String> {
         let mut splitted: Vec<String> = Vec::new();
         let mut i = 0;
@@ -148,29 +148,33 @@ impl ElementLine {
             }
             return pipe_out;
         }
-        if splitted[1..].concat() != "" {
-            sed_child = Command::new(splitted[0].as_str())
-                .arg(splitted[1..].concat())
+        if shell.env.path_validation(&splitted[0]) {
+                if splitted[1..].concat() != "" {
+                    sed_child = Command::new(&splitted[0])
+                    .arg(splitted[1..].concat())
+                    .env_clear()
+                    .envs(shell.env.get_all())
+                    .stdin(pipe_in)
+                    .stdout(pipe_out)
+                    .spawn().expect("error on exec");
+            } else {
+                sed_child = Command::new(&splitted[0])
+                .stdin(pipe_in)
                 .env_clear()
                 .envs(shell.env.get_all())
-                .stdin(pipe_in)
                 .stdout(pipe_out)
-                .spawn()
-                .expect("error on spawn");
+                .spawn().expect("error on exec");
+            } 
+            if last {
+                (sed_child.wait_with_output().expect("error on wait"));
+                return Stdio::null();
+            }
+            return sed_child.stdout.expect("error on stdout").into();
         } else {
-            sed_child = Command::new(splitted[0].as_str())
-                .stdin(pipe_in)
-                .env_clear()
-                .envs(shell.env.get_all())
-                .stdout(pipe_out)
-                .spawn()
-                .expect("error on spawn");
-        } 
-        if last {
-            (sed_child.wait_with_output().expect("error on wait"));
-            return Stdio::null();
+            eprintln!("minishell: {}: command not found", splitted[0]);
+            shell.error = 127;
+            return pipe_out;
         }
-        return sed_child.stdout.expect("error on stdout").into();
     }
 }
 

@@ -24,12 +24,19 @@ impl Env {
 	pub fn remove_env(&mut self, key: String) {
 		self.env.remove(&key);
 	}
-	pub fn print_env(&self) {
-		for (key, value) in self.env.iter() {
-			println!("{}={}", key, value);
-		}
-	}
 	pub fn get_all(&self) -> HashMap<String, String>{
 		return self.env.clone();
+	}
+	pub fn path_validation(&self, cmd: &String) -> bool {
+		let splitted: Vec<&str> = self.get_env("PATH").unwrap().split(":").collect();
+		for path in splitted {
+			let mut tmp_path = path.to_string();
+			tmp_path.push_str("/");
+			tmp_path.push_str(cmd);
+			if std::path::Path::new(&tmp_path).exists() {
+				return true;
+			}
+		}
+		return false;
 	}
 }
