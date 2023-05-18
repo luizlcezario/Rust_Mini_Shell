@@ -30,7 +30,7 @@ fn parse_pipe(
     element.add_value(String::from("|"));
     tokens.add_token(element);
     *i += 1;
-    return (tokens.tokens.back().unwrap().to_owned(), 0);
+    return (tokens.tokens.last().unwrap().to_owned(), 0);
 }
 
 fn parse_redirection(
@@ -58,7 +58,7 @@ fn parse_redirection(
     element.select_type(&word);
     element.add_value(word);
     tokens.add_token(element);
-    return (tokens.tokens.back().unwrap().to_owned(), 0);
+    return (tokens.tokens.last().unwrap().to_owned(), 0);
 }
 
 pub fn validade_quote(line: &String, i: &usize) -> (usize, bool) {
@@ -113,7 +113,7 @@ fn parse_word(
         || *last_type.get_type() == ParseTypes::Redirection
     {
         tokens.add_token(element);
-        return (tokens.tokens.back().unwrap().to_owned(), 0);
+        return (tokens.tokens.last().unwrap().to_owned(), 0);
     } else {
        eprintln!("minishell: syntax error near unexpected token `newline'");
         return (element, 2);

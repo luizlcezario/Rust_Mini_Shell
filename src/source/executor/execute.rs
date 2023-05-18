@@ -2,13 +2,13 @@ use std::io::Error;
 use std::{fs::File, process::Stdio};
 
 use crate::source::minishell::Shell;
-use crate::source::parser::commands::{ParsedHead, ParseTypes};
+use crate::source::parser::commands::{ ParseTypes, ElementLine};
 use crate::source::redirections::heredoc::heredoc;
 
-struct Pipe {
-    pipe_in: Stdio,
-    pipe_out: Stdio,
-    value: String,
+pub struct Pipe {
+    pub pipe_in: Stdio,
+    pub pipe_out: Stdio,
+    pub value: String,
 }
 
 impl Pipe {
@@ -43,47 +43,53 @@ impl Pipe {
     }
 }
 
-fn execute_pipes(tokens: &ParsedHead) -> (Stdio, Stdio, bool) {
-    let mut pipe = Pipe::new();
-    let mut error = true;
-    for red in tokens.tokens.iter() {
-        if red.get_type() == &ParseTypes::Word {
-            if pipe.value == ">" {
-                error = pipe.open_write(red.get_value());
-            } else if pipe.value == "<" {
-                error = pipe.open_read(red.get_value());
-            } else if pipe.value == ">>" {
-                error = pipe.open_write(red.get_value());
-            } else if pipe.value == "<<" {
-                heredoc(red.get_value());
-            }
+fn execute_pipes(shell: & mut Shell , tokens: &Vec<ElementLine>, now: usize, mut error: bool, mut pipe: Pipe) -> ( Pipe, bool, usize) {
+    let mut last = 0;
+    if now < tokens.len() {
+        let token_now = &tokens[now];
+        if token_now.get_type() == &ParseTypes::Word {
+            (pipe, error, last) = execute_pipes(shell, tokens, now + 1, error, pipe);
             if error == false {
-                return (pipe.pipe_in, pipe.pipe_out, false);
+                pipe = token_now.execute(shell, pipe, last == tokens.len());
+            }
+            return (pipe, error, last);
+        }
+        else if token_now.get_type() == &ParseTypes::Redirection {
+            if token_now.value == ">" {
+                error = pipe.open_write(tokens[now + 1].get_value());
+            } else if pipe.value == "<" {
+                error = pipe.open_read(tokens[now + 1].get_value());
+            } else if pipe.value == ">>" {
+                error = pipe.open_write(tokens[now + 1].get_value());
+            } else if pipe.value == "<<" {
+                heredoc(tokens[now + 1].get_value());
+            }
+            (pipe, error, _) = execute_pipes(shell, tokens,  now + 2, error, pipe);
+            if error == false {
+                return (pipe, error, now);
             }
         } else {
-            pipe.value = red.get_value().clone();
+            return (pipe, error, now);
         }
     }
-    return (pipe.pipe_in, pipe.pipe_out, true);
+    return (pipe, error, now);
 }
 
 pub fn execute(mut shell: Shell) -> Shell {
-    let (mut pipe_in, pipe_out, error) = execute_pipes(&shell.tokens);
-    let token = shell.tokens.clone();
-    if error == false {
-        return shell;
-    }
-    for (u, cmd) in token.tokens.iter().enumerate() {
-        if cmd.get_type() == &ParseTypes::Word {
-            if u == token.tokens.len() - 1 {
-                break;
-            }
-            pipe_in = cmd.execute(& mut shell, pipe_in, Stdio::piped(),false);
+    let mut cmds = 0;
+    let mut now = 0;
+    let mut last = 0;
+    let mut pipe = Pipe::new();
+    while cmds < shell.tokens.n_cmds {
+        if cmds + 1 == shell.tokens.n_cmds {
+            pipe.pipe_out = Stdio::inherit();
+        } else {
+            pipe.pipe_out = Stdio::piped();
         }
+        let tokens  = shell.tokens.tokens[(last + now)..].to_vec().clone();
+        (pipe, _, now) = execute_pipes(& mut shell , &tokens , 0, false, pipe);
+        last = now;
+        cmds += 1;
     }
-   token.tokens
-        .back()
-        .expect("errror")
-        .execute(& mut shell, pipe_in, pipe_out, true);
-    return shell;
+    shell
 }

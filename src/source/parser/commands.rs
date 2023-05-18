@@ -1,11 +1,10 @@
 use std::{
-    collections::LinkedList,
     process::{Command, Stdio},
 };
 
 use regex::{Regex, Error};
 
-use crate::source::{builtins::{cd::built_cd, env::built_env, pwd::built_pwd, exit::built_exit, export::built_export, unset::built_unset}, minishell::Shell};
+use crate::source::{builtins::{cd::built_cd, env::built_env, pwd::built_pwd, exit::built_exit, export::built_export, unset::built_unset}, minishell::Shell, executor::execute::Pipe};
 
 use super::parser::validade_quote;
 
@@ -139,14 +138,17 @@ impl ElementLine {
         return splitted;
     }
 
-    pub fn execute(&self, shell: & mut Shell, pipe_in: Stdio, pipe_out: Stdio, last:bool, ) -> Stdio {
+    pub fn execute(&self, shell: & mut Shell, mut  pipe: Pipe, last:bool, ) -> Pipe {
         let mut splitted = self.split_string(&shell);
         let sed_child;
         if self.is_builtin(shell, splitted[0].clone(), &mut splitted) == 1 {
             if last {
-                return Stdio::null();
+                pipe.pipe_in = Stdio::null();
+                return pipe;
             }
-            return pipe_out;
+            pipe.pipe_in = pipe.pipe_out;
+            pipe.pipe_out = Stdio::null();
+            return pipe;
         }
         if shell.env.path_validation(&splitted[0]) {
                 if splitted[1..].concat() != "" {
@@ -154,26 +156,32 @@ impl ElementLine {
                     .arg(splitted[1..].concat())
                     .env_clear()
                     .envs(shell.env.get_all())
-                    .stdin(pipe_in)
-                    .stdout(pipe_out)
+                    .stdin(pipe.pipe_in)
+                    .stdout(pipe.pipe_out)
                     .spawn().expect("error on exec");
             } else {
                 sed_child = Command::new(&splitted[0])
-                .stdin(pipe_in)
+                .stdin(pipe.pipe_in)
                 .env_clear()
                 .envs(shell.env.get_all())
-                .stdout(pipe_out)
+                .stdout(pipe.pipe_out)
                 .spawn().expect("error on exec");
             } 
             if last {
                 (sed_child.wait_with_output().expect("error on wait"));
-                return Stdio::null();
+                pipe.pipe_in = Stdio::null();
+                pipe.pipe_out = Stdio::null();
+                return pipe;
             }
-            return sed_child.stdout.expect("error on stdout").into();
+            pipe.pipe_in = sed_child.stdout.expect("error on stdout").into();
+            pipe.pipe_out = Stdio::null();
+            return pipe;
         } else {
             eprintln!("minishell: {}: command not found", splitted[0]);
             shell.error = 127;
-            return pipe_out;
+            pipe.pipe_in = pipe.pipe_out;
+            pipe.pipe_out = Stdio::null();
+            return pipe;
         }
     }
 }
@@ -181,35 +189,35 @@ impl ElementLine {
 #[derive(Clone)]
 pub struct ParsedHead {
     pub n_cmds: i32,
-    pub tokens: LinkedList<ElementLine>,
+    pub tokens: Vec<ElementLine>,
 }
 
 impl ParsedHead {
     pub fn add_token(&mut self, cmd: ElementLine) {
-        self.tokens.push_back(cmd);
+        self.tokens.push(cmd);
         self.n_cmds += 1;
     }
 
     pub fn new() -> ParsedHead {
         ParsedHead {
             n_cmds: 0,
-            tokens: LinkedList::new(),
+            tokens: Vec::new(),
         }
     }
-    pub fn get_all_until_next(&mut self, now: &ElementLine) -> LinkedList<&ElementLine> {
-        let mut list = LinkedList::new();
-        let mut now_pos = false;
-        for token in self.tokens.iter() {
-            if token == now {
-                now_pos = true;
-            } else if now_pos && token.get_type() == &ParseTypes::Pipe {
-                break;
-            } else if now_pos && token.get_type() == &ParseTypes::End {
-                break;
-            } else if now_pos {
-                list.push_back(token);
-            }
-        }
-        return list;
-    }
+    // pub fn get_all_until_next(&mut self, now: &ElementLine) -> Vec<&ElementLine> {
+    //     let mut list = Vec::new();
+    //     let mut now_pos = false;
+    //     for token in self.tokens.iter() {
+    //         if token == now {
+    //             now_pos = true;
+    //         } else if now_pos && token.get_type() == &ParseTypes::Pipe {
+    //             break;
+    //         } else if now_pos && token.get_type() == &ParseTypes::End {
+    //             break;
+    //         } else if now_pos {
+    //             list.push(token);
+    //         }
+    //     }
+    //     return list;
+    // }
 }
