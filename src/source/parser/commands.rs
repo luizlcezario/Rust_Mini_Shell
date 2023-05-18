@@ -3,7 +3,9 @@ use std::{
     process::{Command, Stdio},
 };
 
-use crate::source::{builtins::{cd::built_cd, env::built_env, pwd::built_pwd, exit::built_exit, export::built_export, unset::built_unset}, minishell::Shell, env::new_env::Env};
+use regex::Regex;
+
+use crate::source::{builtins::{cd::built_cd, env::built_env, pwd::built_pwd, exit::built_exit, export::built_export, unset::built_unset}, minishell::Shell};
 
 use super::parser::validade_quote;
 
@@ -26,7 +28,33 @@ impl PartialEq for ElementLine {
         self as *const _ == other as *const _
     }
 }
-
+fn remove_dolar_by_env(mut word: String, shell: &Shell ) -> String {
+    while let Some(a) = word.find('$') {
+        let mut has_special = false;
+        let mut var = String::new();
+        let f = word[a..].find(' ');
+        if f.is_some() {
+            var = word[a..(a + f.unwrap())].to_string();
+        } else {
+            let special_chars_regex = Regex::new(r"[!#%^&*()+={}\[\]|:;\\<>,?/]").unwrap();
+            if special_chars_regex.is_match(&word[(a + 1)..]){
+                has_special = true
+            } else {
+                var = word[(a + 1)..].to_string();
+            }
+        }
+        if has_special && word[a..a + 2].contains("$?") {
+            word.replace_range(a..a + 2, &shell.last_error.to_string());
+        } else {
+            let value = shell.env.get_env(&var);
+            match value {
+                Some(value) => word.replace_range(a..(a + var.len()), &value),
+                None => word.replace_range(a..=(a + var.len()), ""),
+            }
+        }
+    }
+    return word;
+}
 impl ElementLine {
     pub fn new() -> ElementLine {
         ElementLine {
@@ -76,7 +104,7 @@ impl ElementLine {
         }
     }
 
-    pub fn split_string(&self, env: &Env) -> Vec<String> {
+    pub fn split_string(&self, shell: &Shell) -> Vec<String> {
         let mut splitted: Vec<String> = Vec::new();
         let mut i = 0;
         let mut word = String::new();
@@ -88,8 +116,11 @@ impl ElementLine {
                         .expect("minishell: syntax error near unexpected token `newline'"),
                 );
                 i += pos + 2;
-
-            } else if self.value.chars().nth(i).unwrap() == ' ' &&  word != ""{
+                if self.value.chars().nth(i - 1).unwrap() == '"' {
+                    word = remove_dolar_by_env(word, shell);
+                }
+            } else if self.value.chars().nth(i).unwrap() == ' ' &&  word != "" {
+                word = remove_dolar_by_env(word, shell);
                 splitted.push(word.clone());
                 word.clear();
                 i += 1;
@@ -100,13 +131,16 @@ impl ElementLine {
             }
         }
         if word != "" {
+            if self.value.chars().nth(i - 1).unwrap() == '"' {
+                word = remove_dolar_by_env(word, shell);
+            }
             splitted.push(word);
         }
         return splitted;
     }
 
     pub fn execute(&self, shell: & mut Shell, pipe_in: Stdio, pipe_out: Stdio, last:bool, ) -> Stdio {
-        let mut splitted = self.split_string(&shell.env);
+        let mut splitted = self.split_string(&shell);
         let sed_child;
         if self.is_builtin(shell, splitted[0].clone(), &mut splitted) == 1 {
             if last {
