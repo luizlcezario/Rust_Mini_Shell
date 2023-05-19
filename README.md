@@ -2,7 +2,7 @@
 <div>
 <p align="center">
 	<a href="https://www.42sp.org.br/">
-		<img src="./.github/42.png" alt="42" width="500"/> 
+		<img src="./.github/Logo.png" alt="42" width="500"/> 
 	</a>
 </p>
 </div>
