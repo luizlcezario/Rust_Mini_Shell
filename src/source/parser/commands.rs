@@ -2,7 +2,7 @@ use std::{
     process::{Command, Stdio},
 };
 
-use regex::{Regex, Error};
+use regex::{Regex};
 
 use crate::source::{builtins::{cd::built_cd, env::built_env, pwd::built_pwd, exit::built_exit, export::built_export, unset::built_unset}, minishell::Shell, executor::execute::Pipe};
 
@@ -151,9 +151,10 @@ impl ElementLine {
             return pipe;
         }
         if shell.env.path_validation(&splitted[0]) {
-                if splitted[1..].concat() != "" {
+            if splitted[1..].concat() != "" {
+                    let args = splitted[1..].to_vec();
                     sed_child = Command::new(&splitted[0])
-                    .arg(splitted[1..].concat())
+                    .args(args)
                     .env_clear()
                     .envs(shell.env.get_all())
                     .stdin(pipe.pipe_in)
@@ -209,20 +210,5 @@ impl ParsedHead {
             tokens: Vec::new(),
         }
     }
-    // pub fn get_all_until_next(&mut self, now: &ElementLine) -> Vec<&ElementLine> {
-    //     let mut list = Vec::new();
-    //     let mut now_pos = false;
-    //     for token in self.tokens.iter() {
-    //         if token == now {
-    //             now_pos = true;
-    //         } else if now_pos && token.get_type() == &ParseTypes::Pipe {
-    //             break;
-    //         } else if now_pos && token.get_type() == &ParseTypes::End {
-    //             break;
-    //         } else if now_pos {
-    //             list.push(token);
-    //         }
-    //     }
-    //     return list;
-    // }
+  
 }

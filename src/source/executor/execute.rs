@@ -44,7 +44,7 @@ impl Pipe {
 }
 
 fn execute_pipes(shell: & mut Shell , tokens: &Vec<ElementLine>, now: usize, mut error: bool, mut pipe: Pipe) -> ( Pipe, bool, usize) {
-    let mut last = 0;
+    let last;
     if now < tokens.len() {
         let token_now = &tokens[now];
         if token_now.get_type() == &ParseTypes::Word {
@@ -81,8 +81,8 @@ fn execute_pipes(shell: & mut Shell , tokens: &Vec<ElementLine>, now: usize, mut
 
 pub fn execute(mut shell: Shell) -> Shell {
     let mut cmds = 0;
-    let mut now = 0;
     let mut last = 0;
+    let mut now;
     let mut pipe = Pipe::new();
     while cmds < shell.tokens.n_cmds {
         if cmds + 1 == shell.tokens.n_cmds {
@@ -90,9 +90,9 @@ pub fn execute(mut shell: Shell) -> Shell {
         } else {
             pipe.pipe_out = Stdio::piped();
         }
-        let tokens  = shell.tokens.tokens[(last + now)..].to_vec().clone();
+        let tokens  = shell.tokens.tokens[(last)..].to_vec().clone();
         (pipe, _, now) = execute_pipes(& mut shell , &tokens , 0, false, pipe);
-        last = now;
+        last = last + now + 1;
         cmds += 1;
     }
     shell
