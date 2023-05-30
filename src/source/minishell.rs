@@ -1,8 +1,12 @@
-use std::{fs::File, io::{Read, self, Write},  path::Path};
-use super::parser::commands::ParsedHead;
-use super::parser::parser;
 use super::executor::execute;
+use super::parser::commands::ParsedHead;
+use super::parser::lexer;
 use colored::Colorize;
+use std::{
+    fs::File,
+    io::{self, Read, Write},
+    path::Path,
+};
 pub struct Shell {
     pub line: String,
     pub env: super::env::new_env::Env,
@@ -21,7 +25,7 @@ impl Shell {
             last_error: 0,
         }
     }
-    pub fn reset(&mut self){
+    pub fn reset(&mut self) {
         self.line.clear();
         self.last_error = self.error;
         self.tokens = ParsedHead::new();
@@ -29,12 +33,11 @@ impl Shell {
     }
 }
 
-
 fn display_prompt(shell: &Shell) {
     let user = shell.env.get_env("USER");
     match user {
         Some(u) => print!("{}:", u.green()),
-        None =>{
+        None => {
             let mut contents = String::new();
             match File::open("/etc/hostname") {
                 Ok(mut file) => file.read_to_string(&mut contents).unwrap(),
@@ -44,15 +47,17 @@ fn display_prompt(shell: &Shell) {
         }
     };
     let user = shell.env.get_env("PWD");
-    match user {
-        Some(u) => print!("{}$ ", Path::new(u)
-        .file_name()
-        .expect("Failed to get last directory")
-        .to_str()
-        .expect("Failed to convert last directory to string").blue()),
-        None => (),
-    };
-    
+    if let Some(u) = user {
+        print!(
+            "{}$ ",
+            Path::new(u)
+                .file_name()
+                .expect("Failed to get last directory")
+                .to_str()
+                .expect("Failed to convert last directory to string")
+                .blue()
+        );
+    }
     io::stdout().flush().unwrap();
 }
 
@@ -65,7 +70,7 @@ pub fn minishell() {
             Ok(_) => (),
             Err(e) => panic!("Error: {}", e),
         };
-        (shell.tokens, shell.error) = parser::parser(&shell.line);
+        (shell.tokens, shell.error) = lexer::parser(&shell.line);
         if shell.error != 0 {
             shell.reset();
             continue;

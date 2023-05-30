@@ -6,11 +6,11 @@ pub fn check_error(line: &String) -> i32 {
             eprintln!("minishell: parse error near `{}'", &line[0..2]);
             return 2;
         }
-    } else if line.len() > 1 && line[0..1].contains("|") {
+    } else if line.len() > 1 && line[0..1].contains('|') {
         eprintln!("minishell: parse error near `|'");
         return 2;
     }
-    return 0;
+    0
 }
 
 fn parse_pipe(
@@ -61,16 +61,16 @@ fn parse_redirection(
     return (tokens.tokens.last().unwrap().to_owned(), 0);
 }
 
-pub fn validade_quote(line: &String, i: &usize) -> (usize, bool) {
+pub fn validade_quote(line: &str, i: &usize) -> (usize, bool) {
     let string = line
         .get((*i + 1)..)
         .unwrap()
         .find(line.chars().nth(*i).unwrap());
     match string {
-        Some(x) => return (x, false),
+        Some(x) => (x, false),
         None => {
             eprintln!("minishell: syntax error near unexpected token `newline'");
-            return (0, true);
+            (0, true)
         }
     }
 }
@@ -85,13 +85,13 @@ fn parse_word(
     let mut word = String::new();
     while *i < line.len() {
         if line.chars().nth(*i).unwrap() == '\"' || line.chars().nth(*i).unwrap() == '\'' {
-            let (pos, error) = validade_quote(&line, i);
+            let (pos, error) = validade_quote(line, i);
             word.push_str(
                 line.get(*i..=(*i + pos + 1))
                     .expect("minishell: syntax error near unexpected token `newline'"),
             );
             *i += pos + 2;
-            if error == true {
+            if error {
                 break;
             }
         } else if line.chars().nth(*i).unwrap() == '|'
@@ -115,12 +115,12 @@ fn parse_word(
         tokens.add_token(element);
         return (tokens.tokens.last().unwrap().to_owned(), 0);
     } else {
-       eprintln!("minishell: syntax error near unexpected token `newline'");
-        return (element, 2);
+        eprintln!("minishell: syntax error near unexpected token `newline'");
+        (element, 2)
     }
 }
 
-pub fn parser(line: &String) -> (ParsedHead, i32) {
+pub fn parser(line: &str) -> (ParsedHead, i32) {
     let mut tokens = ParsedHead::new();
     let trined = String::from(line.trim());
     let mut i = 0;
@@ -130,19 +130,15 @@ pub fn parser(line: &String) -> (ParsedHead, i32) {
     while i < trined.len() {
         match trined.chars().nth(i).unwrap() {
             '|' => (last_type, error) = parse_pipe(&mut tokens, &mut i, &last_type),
-            '>' => {
-                (last_type, error) = parse_redirection(&mut tokens, &trined, &mut i, &mut last_type)
-            }
-            '<' => {
-                (last_type, error) = parse_redirection(&mut tokens, &trined, &mut i, &mut last_type)
-            }
+            '>' => (last_type, error) = parse_redirection(&mut tokens, &trined, &mut i, &last_type),
+            '<' => (last_type, error) = parse_redirection(&mut tokens, &trined, &mut i, &last_type),
             ' ' => {}
-            _ => (last_type, error) = parse_word(&mut tokens, &trined, &mut i, &mut last_type),
+            _ => (last_type, error) = parse_word(&mut tokens, &trined, &mut i, &last_type),
         }
         if error != 0 {
             return (tokens, error);
         }
         i += 1;
     }
-    return (tokens, error);
+    (tokens, error)
 }

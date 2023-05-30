@@ -1,6 +1,6 @@
 mod source;
-use std::env;
 use source::minishell;
+use std::env;
 
 fn main() {
     if env::args().len() != 1 {

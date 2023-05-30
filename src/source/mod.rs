@@ -1,6 +1,6 @@
-pub mod minishell;
 pub mod builtins;
-pub mod parser;
-pub mod executor;
-pub mod redirections;
 pub mod env;
+pub mod executor;
+pub mod minishell;
+pub mod parser;
+pub mod redirections;
